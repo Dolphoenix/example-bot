@@ -21,8 +21,19 @@ require_once __DIR__ . '/vendor/autoload.php';
 /** @var array $config */
 $config = require __DIR__ . '/config.php';
 
-/*use Medoo\Medoo;
-use GuzzleHttp\Client;
+use Medoo\Medoo;
+
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
+
+// 创建日志频道
+$log = new Logger('name');
+$log->pushHandler(new StreamHandler(__DIR__ . '/bot.log', Logger::WARNING));
+// 添加日志记录
+$log->addWarning('Foo', ['test']);
+$log->addError('Bar', ['fafdaf']);
+
+/*use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 
 $query_last = 'http://apis.juhe.cn/lottery/';
@@ -58,7 +69,34 @@ try {
     // Initialize
     $database = new Medoo($db_config);
 
-    var_export($database->info());
+    $insert_data = '[
+			{
+				"lottery_id":"ssq",
+				"lottery_res":"01,06,12,18,22,24,03",
+				"lottery_no":"20092",
+				"lottery_date":"2020-09-20",
+				"lottery_exdate":"2020-11-18",
+				"lottery_sale_amount":"394,714,558",
+				"lottery_pool_amount":"1,113,718,036"
+			},
+			{
+				"lottery_id":"ssq",
+				"lottery_res":"01,09,11,12,16,19,16",
+				"lottery_no":"20091",
+				"lottery_date":"2020-09-17",
+				"lottery_exdate":"2020-11-15",
+				"lottery_sale_amount":"362,307,424",
+				"lottery_pool_amount":"1,088,865,952"
+			}
+		]';
+
+    $insert_data = @json_decode($insert_data, true);
+    array_multisort(array_column($insert_data, 'lottery_no'), SORT_ASC, $insert_data);
+
+    $last_id = $database->insert("lottery_history_ssq", $insert_data);
+
+    var_export($last_id);
+    // var_export($database->info());
 } catch (\RuntimeException $e) {
     echo $e->getMessage();
 }*/
