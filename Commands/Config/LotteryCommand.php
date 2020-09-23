@@ -82,7 +82,14 @@ class LotteryCommand extends UserCommand
         return $this->sendMsg($text);
     }
 
-    private function sendMsg($text)
+    /**
+     * 发送消息
+     *
+     * @param $text
+     * @return ServerResponse
+     * @throws TelegramException
+     */
+    private function sendMsg($text): ServerResponse
     {
         $message = $this->getMessage();
 
@@ -107,9 +114,6 @@ class LotteryCommand extends UserCommand
 
     private function luckyRush()
     {
-        $ssq_w = array(0, 2, 4);
-        $dlt_w = array(1, 3, 6);
-        $date_w = date('w');
         $lottery_info = '';
         $lucky_one = '';
         $lucky_two = '';
@@ -117,8 +121,8 @@ class LotteryCommand extends UserCommand
         $end_info = '';
 
         $bets = [];
-        $lottery_id = '';
-        if (in_array($date_w, $ssq_w)) {
+        $lottery_id = $this->getLotteryId();
+        if ('ssq' === $lottery_id) {
             //ssq
             $lottery_info = '你好，帮忙买下双色球。';
             $lucky_one = '红球：04 06 07 12 18 19 蓝球：09';
@@ -130,22 +134,18 @@ class LotteryCommand extends UserCommand
             $lucky_three = '红球：' . $red_no . '蓝球：' . $blue_no;
             $bets[] = str_replace(' ', ',', trim($red_no . $blue_no));
             $end_info = '';
-            $lottery_id = 'ssq';
-        } else {
-            if (in_array($date_w, $dlt_w)) {
-                //dlt
-                $lottery_info = '你好，帮忙买下大乐透。';
-                $lucky_one = '红球：04 06 09 18 19 蓝球：07 12';
-                $bets[] = '04,06,09,18,19,07,12';
-                list($red_no, $blue_no) = $this->dlt();
-                $bets[] = str_replace(' ', ',', trim($red_no . $blue_no));
-                $lucky_two = '红球：' . $red_no . '蓝球：' . $blue_no;
-                list($red_no, $blue_no) = $this->dlt();
-                $bets[] = str_replace(' ', ',', trim($red_no . $blue_no));
-                $lucky_three = '红球：' . $red_no . '蓝球：' . $blue_no;
-                $end_info = '都追加，谢谢。';
-                $lottery_id = 'dlt';
-            }
+        } elseif ('dlt' === $lottery_id) {
+            //dlt
+            $lottery_info = '你好，帮忙买下大乐透。';
+            $lucky_one = '红球：04 06 09 18 19 蓝球：07 12';
+            $bets[] = '04,06,09,18,19,07,12';
+            list($red_no, $blue_no) = $this->dlt();
+            $bets[] = str_replace(' ', ',', trim($red_no . $blue_no));
+            $lucky_two = '红球：' . $red_no . '蓝球：' . $blue_no;
+            list($red_no, $blue_no) = $this->dlt();
+            $bets[] = str_replace(' ', ',', trim($red_no . $blue_no));
+            $lucky_three = '红球：' . $red_no . '蓝球：' . $blue_no;
+            $end_info = '都追加，谢谢。';
         }
         $text = $lottery_info . PHP_EOL . $lucky_one . PHP_EOL . $lucky_two . PHP_EOL . $lucky_three . PHP_EOL . $end_info;
         return [$text, $lottery_id, $bets];
@@ -178,6 +178,14 @@ class LotteryCommand extends UserCommand
         return $result;
     }
 
+    /**
+     * 保存bet内容
+     * @param $db
+     * @param $lottery_id
+     * @param $lottery_no
+     * @param $lottery_bets
+     * @return false
+     */
     private function saveBets($db, $lottery_id, $lottery_no, $lottery_bets)
     {
         if (is_null($db) || empty($lottery_id) || empty($lottery_no) || empty($lottery_bets)) {
@@ -205,9 +213,20 @@ class LotteryCommand extends UserCommand
         return $db->insert($table, $insert_data);
     }
 
+    /**
+     * 获取当前期号
+     * @param $lottery_id
+     * @param string $lottery_no
+     * @return false|int
+     */
     private function getLotteryNo($lottery_id, $lottery_no = '')
     {
-        $res = $this->queryLotteryRst($lottery_id, $lottery_no);
+        $uri = 'query';
+        $params = [
+            'lottery_id' => $lottery_id,
+            'lottery_no' => $lottery_no,
+        ];
+        $res = $this->requestApi($uri, $params);
         if (!$res) {
             return false;
         }
@@ -224,29 +243,51 @@ class LotteryCommand extends UserCommand
         }
     }
 
-    private function queryLotteryRst($lottery_id, $lottery_no = '')
+    /**
+     * 请求聚合api
+     * @param $uri
+     * @param array $params
+     * @return false|mixed
+     */
+    private function requestApi($uri, $params = [])
     {
         $query_last = 'http://apis.juhe.cn/lottery/';
+        $juhe_key = '7a4beb6175a2c4dacf6cf9cab43bfe6f';
+        $params['key'] = $juhe_key;
 
         $client = new Client(['base_uri' => $query_last]);
-        $uri = 'query';
-        $query = [
-            'lottery_id' => $lottery_id,
-            'lottery_no' => $lottery_no,
-            'key'        => '7a4beb6175a2c4dacf6cf9cab43bfe6f',
-        ];
 
         try {
-            $response = $client->get($uri, ['query' => $query]);
+            $response = $client->get($uri, ['query' => $params]);
             $res = @json_decode((string)$response->getBody(), true);
             if (!$res || (int)$res['error_code'] > 0) {
-                echo '请求响应内容有误';
+                $this->addLog('接口请求，响应内容有误：', '====>' . $res['reason'] . '<====');
                 return false;
             }
-            return $res['result'];
+            return $res['result'] ?? [];
         } catch (RequestException $e) {
-            echo $e->getMessage();
+            $this->addLog('接口请求，响应内容有误：', '====>' . $e->getMessage() . '<====');
             return false;
         }
+    }
+
+    private function getLotteryId()
+    {
+        $ssq_w = array(0, 2, 4);
+        $dlt_w = array(1, 3, 6);
+        $date_w = date('w');
+
+        if (in_array($date_w, $ssq_w)) {
+            return 'ssq';
+        } elseif (in_array($date_w, $dlt_w)) {
+            return 'dlt';
+        } else {
+            return '';
+        }
+    }
+
+    private function checkBonus()
+    {
+        //
     }
 }

@@ -17,21 +17,43 @@
 // Load composer
 require_once __DIR__ . '/vendor/autoload.php';
 
+// 自定义class
+require_once __DIR__ . '/m.php';
+
 // Load all configuration options
 /** @var array $config */
 $config = require __DIR__ . '/config.php';
 
 use Medoo\Medoo;
 
-use Monolog\Logger;
-use Monolog\Handler\StreamHandler;
+$m = new m();
+if (!isset($config['mysql'])) {
+    throw new \RuntimeException('数据库配置有误');
+}
+$conf = $config['mysql'];
+$db_config = [
+    'database_type' => 'mysql',
+    'database_name' => $conf['database'] ?? '',
+    'server'        => $conf['host'] ?? '',
+    'username'      => $conf['user'] ?? '',
+    'password'      => $conf['password'] ?? '',
+];
 
-// 创建日志频道
-$log = new Logger('name');
-$log->pushHandler(new StreamHandler(__DIR__ . '/bot.log', Logger::WARNING));
-// 添加日志记录
-$log->addWarning('Foo', ['test']);
-$log->addError('Bar', ['fafdaf']);
+// Initialize
+$db = new Medoo($db_config);
+// $a = $m->insertDailyRes($db);
+// var_dump($a);
+// $uri = 'bonus';
+// $query = [
+//     'lottery_id' => 'ssq',
+//     'lottery_res' => '04,06,07,12,18,19@09',
+//     'lottery_no' => '',
+// ];
+// $m->requestApi($uri, $query);
+
+// use Medoo\Medoo;
+//
+
 
 /*use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
