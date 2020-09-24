@@ -69,23 +69,50 @@ function findBets($db, $lottery_id, $lottery_date = '', $lottery_no = '')
     $bets = [];
 
     foreach ($rst as $item) {
-        $bets[] = $item['lottery_bets'];
+        $nth = $lottery_id === 'ssq' ? 5 : 4;
+        $bets[] = str_replace_nth(',', '@', $item['lottery_bets'], $nth);
     }
 
     return $bets;
 }
 
-$a = findBets($db, 'dlt', '2020-09-23', '20093');
-var_export($a);
-die();
+$lottery_id = 'dlt';
+$lottery_date = '2020-09-23';
+$lottery_no = '20093';
+$bets = findBets($db, $lottery_id, $lottery_date, $lottery_no);
 
 $m = new m();
+$text = '';
+for ($i = 0; $i < count($bets); $i++) {
+    $params = [
+        'lottery_id'  => $lottery_id,
+        'lottery_res' => $bets[$i],
+        'lottery_no'  => $lottery_no,
+    ];
+    $rst = $m->requestApi('bonus', $params);
+    if (0 === $i) {
+        $text .= '开奖号码：' . $rst['real_lottery_res'] . PHP_EOL;
+        $first = false;
+    }
+
+    $text .= "第" . ($i + 1) . "个投注：" . $rst['lottery_res'] . PHP_EOL;
+    $text .= '红球命中：' . $rst['hit_red_ball_num'] . '个（5）' . PHP_EOL;
+    $text .= '蓝球命中：' . $rst['hit_blue_ball_num'] . '个（2）' . PHP_EOL;
+    if (1 === (int)$rst['is_prize']) {
+        $content = "{$rst['prize_msg']}，{$rst['lottery_prize'][0]['prize_name']}，奖金：{$rst['lottery_prize'][0]['prize_money']}元";
+    } else {
+        $content = '下次努力!';
+    }
+    $text .= $content . PHP_EOL;
+}
 
 $telegram = new Longman\TelegramBot\Telegram($config['api_key'], $config['bot_username']);
 
 $m_chat_id = 43709453;
 
-sendMsg($m_chat_id, 'Just a test!');
+sendMsg($m_chat_id, $text);
+
+die();
 
 function addLog($event, $content)
 {
@@ -108,6 +135,15 @@ function sendMsg($chat_id, $text)
     } catch (\Exception $e) {
         addLog('测试：', $e->getMessage());
     }
+}
+
+function str_replace_nth($search, $replace, $subject, $nth)
+{
+    $found = preg_match_all('/' . preg_quote($search) . '/', $subject, $matches, PREG_OFFSET_CAPTURE);
+    if (false !== $found && $found > $nth) {
+        return substr_replace($subject, $replace, $matches[0][$nth][1], strlen($search));
+    }
+    return $subject;
 }
 
 // $a = $m->insertDailyRes($db);
@@ -142,25 +178,25 @@ try {
 
 /*try {
     $insert_data = '[
-			{
-				"lottery_id":"ssq",
-				"lottery_res":"01,06,12,18,22,24,03",
-				"lottery_no":"20092",
-				"lottery_date":"2020-09-20",
-				"lottery_exdate":"2020-11-18",
-				"lottery_sale_amount":"394,714,558",
-				"lottery_pool_amount":"1,113,718,036"
-			},
-			{
-				"lottery_id":"ssq",
-				"lottery_res":"01,09,11,12,16,19,16",
-				"lottery_no":"20091",
-				"lottery_date":"2020-09-17",
-				"lottery_exdate":"2020-11-15",
-				"lottery_sale_amount":"362,307,424",
-				"lottery_pool_amount":"1,088,865,952"
-			}
-		]';
+            {
+                "lottery_id":"ssq",
+                "lottery_res":"01,06,12,18,22,24,03",
+                "lottery_no":"20092",
+                "lottery_date":"2020-09-20",
+                "lottery_exdate":"2020-11-18",
+                "lottery_sale_amount":"394,714,558",
+                "lottery_pool_amount":"1,113,718,036"
+            },
+            {
+                "lottery_id":"ssq",
+                "lottery_res":"01,09,11,12,16,19,16",
+                "lottery_no":"20091",
+                "lottery_date":"2020-09-17",
+                "lottery_exdate":"2020-11-15",
+                "lottery_sale_amount":"362,307,424",
+                "lottery_pool_amount":"1,088,865,952"
+            }
+        ]';
 
     $insert_data = @json_decode($insert_data, true);
     array_multisort(array_column($insert_data, 'lottery_no'), SORT_ASC, $insert_data);
