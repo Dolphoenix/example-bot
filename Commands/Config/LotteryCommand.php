@@ -67,17 +67,27 @@ class LotteryCommand extends UserCommand
      */
     public function execute(): ServerResponse
     {
-        // 数据库配置
-        $db_config = $this->getConfig('credentials');
+        $receiveMsg = trim($this->getMessage()->getText(true));
+        if ($receiveMsg !== '' && 'bonus' === $receiveMsg) {
+            return $this->replyToChat('I can do it!');
+        } elseif ($receiveMsg !== '' && (0 === strpos($receiveMsg, 'dlt') || 0 === strpos($receiveMsg, 'ssq'))) {
+            // 格式“dlt=2020-09-24=200093“
+            $arr = explode('=', $receiveMsg);
+            $lottery_id = $arr[0] ?? '';
+            $lottery_date = $arr[1] ?? '';
+            $lottery_no = $arr[2] ?? '';
 
-        // Initialize
-        $db = new Medoo($db_config);
+
+            return $this->replyToChat('I have something to do!');
+        } elseif ($receiveMsg !== '') {
+            return $this->replyToChat('I can\'t do it!');
+        }
 
         list($text, $lottery_id, $bets) = $this->luckyRush();
 
         $lottery_no = $this->getLotteryNo($lottery_id);
 
-        $this->saveBets($db, $lottery_id, $lottery_no, $bets);
+        $this->saveBets($lottery_id, $lottery_no, $bets);
 
         return $this->sendMsg($text);
     }
@@ -180,15 +190,14 @@ class LotteryCommand extends UserCommand
 
     /**
      * 保存bet内容
-     * @param $db
      * @param $lottery_id
      * @param $lottery_no
      * @param $lottery_bets
      * @return false
      */
-    private function saveBets($db, $lottery_id, $lottery_no, $lottery_bets)
+    private function saveBets($lottery_id, $lottery_no, $lottery_bets)
     {
-        if (is_null($db) || empty($lottery_id) || empty($lottery_no) || empty($lottery_bets)) {
+        if (empty($lottery_id) || empty($lottery_no) || empty($lottery_bets)) {
             return false;
         }
         if (!is_array($lottery_bets)) {
@@ -209,6 +218,12 @@ class LotteryCommand extends UserCommand
             $tmp['lottery_bets'] = $item;
             $insert_data[] = $tmp;
         }
+
+        // 数据库配置
+        $db_config = $this->getConfig('credentials');
+
+        // Initialize
+        $db = new Medoo($db_config);
 
         return $db->insert($table, $insert_data);
     }
@@ -284,6 +299,44 @@ class LotteryCommand extends UserCommand
         } else {
             return '';
         }
+    }
+
+    private function findBets($lottery_id, $lottery_date = '', $lottery_no = '')
+    {
+        if (empty($lottery_id)) {
+            return false;
+        }
+        $params['lottery_id'] = $lottery_id;
+        if (!empty($lottery_date)) {
+            $params['lottery_date'] = $lottery_date;
+        }
+        if (!empty($lottery_no)) {
+            $params['lottery_no'] = $lottery_no;
+        }
+
+        $params['ORDER'] = ["id" => "DESC"];
+        $params['LIMIT'] = 3;
+
+        $table = 'lottery_bets';
+
+        // 数据库配置
+        $db_config = $this->getConfig('credentials');
+
+        // Initialize
+        $db = new Medoo($db_config);
+
+        $rst = $db->select($table, '*', $params);
+
+        if (empty($rst)) {
+            return false;
+        }
+        $bets = [];
+
+        foreach ($rst as $item) {
+            $bets[] = $item['lottery_bets'];
+        }
+
+        return $bets;
     }
 
     private function checkBonus()

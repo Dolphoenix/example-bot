@@ -24,9 +24,10 @@ require_once __DIR__ . '/m.php';
 /** @var array $config */
 $config = require __DIR__ . '/config.php';
 
+use Longman\TelegramBot\Request;
 use Medoo\Medoo;
+use Monolog\Logger;
 
-$m = new m();
 if (!isset($config['mysql'])) {
     throw new \RuntimeException('数据库配置有误');
 }
@@ -41,6 +42,74 @@ $db_config = [
 
 // Initialize
 $db = new Medoo($db_config);
+
+function findBets($db, $lottery_id, $lottery_date = '', $lottery_no = '')
+{
+    if (empty($lottery_id)) {
+        return false;
+    }
+    $params['lottery_id'] = $lottery_id;
+    if (!empty($lottery_date)) {
+        $params['lottery_date'] = $lottery_date;
+    }
+    if (!empty($lottery_no)) {
+        $params['lottery_no'] = $lottery_no;
+    }
+
+    $params['ORDER'] = ["id" => "DESC"];
+    $params['LIMIT'] = 3;
+
+    $table = 'lottery_bets';
+
+    $rst = $db->select($table, '*', $params);
+
+    if (empty($rst)) {
+        return false;
+    }
+    $bets = [];
+
+    foreach ($rst as $item) {
+        $bets[] = $item['lottery_bets'];
+    }
+
+    return $bets;
+}
+
+$a = findBets($db, 'dlt', '2020-09-23', '20093');
+var_export($a);
+die();
+
+$m = new m();
+
+$telegram = new Longman\TelegramBot\Telegram($config['api_key'], $config['bot_username']);
+
+$m_chat_id = 43709453;
+
+sendMsg($m_chat_id, 'Just a test!');
+
+function addLog($event, $content)
+{
+    $log = new Logger('name');
+    $log->pushHandler(new StreamHandler(__DIR__ . '/bot.log', Logger::WARNING));
+
+    // $log->addWarning('Foo', ['test']);
+    $log->addError($event, [$content]);
+}
+
+function sendMsg($chat_id, $text)
+{
+    try {
+        $data = [
+            'chat_id' => $chat_id,
+            'text'    => $text,
+        ];
+
+        Request::sendMessage($data);
+    } catch (\Exception $e) {
+        addLog('测试：', $e->getMessage());
+    }
+}
+
 // $a = $m->insertDailyRes($db);
 // var_dump($a);
 // $uri = 'bonus';
@@ -50,10 +119,6 @@ $db = new Medoo($db_config);
 //     'lottery_no' => '',
 // ];
 // $m->requestApi($uri, $query);
-
-// use Medoo\Medoo;
-//
-
 
 /*use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
@@ -76,21 +141,6 @@ try {
 }*/
 
 /*try {
-    if (!isset($config['mysql'])) {
-        throw new \RuntimeException('数据库配置有误');
-    }
-    $conf = $config['mysql'];
-    $db_config = [
-        'database_type' => 'mysql',
-        'database_name' => $conf['database'] ?? '',
-        'server'        => $conf['host'] ?? '',
-        'username'      => $conf['user'] ?? '',
-        'password'      => $conf['password'] ?? '',
-    ];
-
-    // Initialize
-    $database = new Medoo($db_config);
-
     $insert_data = '[
 			{
 				"lottery_id":"ssq",
