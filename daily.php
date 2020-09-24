@@ -25,6 +25,8 @@ require_once __DIR__ . '/m.php';
 $config = require __DIR__ . '/config.php';
 
 use Medoo\Medoo;
+use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
 
 $m = new m();
 if (!isset($config['mysql'])) {
@@ -41,4 +43,17 @@ $db_config = [
 
 // Initialize
 $db = new Medoo($db_config);
-$m->insertDailyRes($db);
+$rst = $m->insertDailyRes($db);
+// $rst = "测试脚本自动执行！！！";
+
+addLog('自动执行脚本：', $rst);
+
+function addLog($event, $content)
+{
+    $log = new Logger('name');
+    $log->pushHandler(new StreamHandler(__DIR__ . '/bot.log', Logger::WARNING));
+
+    // $log->addWarning('Foo', ['test']);
+    $log->addError($event, [$content]);
+}
+
