@@ -77,8 +77,13 @@ class LotteryCommand extends UserCommand
             $lottery_date = $arr[1] ?? '';
             $lottery_no = $arr[2] ?? '';
 
+            $text = $this->checkBonus($lottery_id, $lottery_date, $lottery_no);
 
-            return $this->replyToChat('I have something to do!');
+            if (!empty($text)) {
+                return $this->replyToChat($text);
+            } else {
+                return $this->replyToChat('什么都没查到……');
+            }
         } elseif ($receiveMsg !== '') {
             return $this->replyToChat('I can\'t do it!');
         }
@@ -301,6 +306,35 @@ class LotteryCommand extends UserCommand
         }
     }
 
+    private function checkBonus($lottery_id, $lottery_date = '', $lottery_no = '')
+    {
+        $bets = $this->findBets($lottery_id, $lottery_date, $lottery_no);
+
+        $text = '';
+        for ($i = 0; $i < count($bets); $i++) {
+            $params = [
+                'lottery_id'  => $lottery_id,
+                'lottery_res' => $bets[$i],
+                'lottery_no'  => $lottery_no,
+            ];
+            $rst = $this->requestApi('bonus', $params);
+            if (0 === $i) {
+                $text .= '开奖号码：' . $rst['real_lottery_res'] . PHP_EOL;
+            }
+
+            $text .= "第" . ($i + 1) . "个投注：" . $rst['lottery_res'] . PHP_EOL;
+            $text .= '红球命中：' . $rst['hit_red_ball_num'] . '个（5）' . PHP_EOL;
+            $text .= '蓝球命中：' . $rst['hit_blue_ball_num'] . '个（2）' . PHP_EOL;
+            if (1 === (int)$rst['is_prize']) {
+                $content = "{$rst['prize_msg']}，{$rst['lottery_prize'][0]['prize_name']}，奖金：{$rst['lottery_prize'][0]['prize_money']}元";
+            } else {
+                $content = '下次努力!';
+            }
+            $text .= $content . PHP_EOL;
+        }
+        return $text;
+    }
+
     private function findBets($lottery_id, $lottery_date = '', $lottery_no = '')
     {
         if (empty($lottery_id)) {
@@ -333,14 +367,19 @@ class LotteryCommand extends UserCommand
         $bets = [];
 
         foreach ($rst as $item) {
-            $bets[] = $item['lottery_bets'];
+            $nth = $lottery_id === 'ssq' ? 5 : 4;
+            $bets[] = $this->strReplaceNth(',', '@', $item['lottery_bets'], $nth);
         }
 
         return $bets;
     }
 
-    private function checkBonus()
+    private function strReplaceNth($search, $replace, $subject, $nth)
     {
-        //
+        $found = preg_match_all('/' . preg_quote($search) . '/', $subject, $matches, PREG_OFFSET_CAPTURE);
+        if (false !== $found && $found > $nth) {
+            return substr_replace($subject, $replace, $matches[0][$nth][1], strlen($search));
+        }
+        return $subject;
     }
 }
