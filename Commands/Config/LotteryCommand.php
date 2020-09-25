@@ -22,6 +22,7 @@
 
 namespace Longman\TelegramBot\Commands\UserCommands;
 
+use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use Longman\TelegramBot\Commands\UserCommand;
@@ -118,6 +119,13 @@ class LotteryCommand extends UserCommand
         return Request::sendMessage($data);
     }
 
+    /**
+     * 记录lottery command执行log
+     *
+     * @param $event
+     * @param $content
+     * @throws Exception
+     */
     private function addLog($event, $content)
     {
         $log = new Logger('name');
@@ -127,6 +135,11 @@ class LotteryCommand extends UserCommand
         $log->addError($event, [$content]);
     }
 
+    /**
+     * 随机生成投注内容
+     *
+     * @return array
+     */
     private function luckyRush()
     {
         $lottery_info = '';
@@ -166,6 +179,11 @@ class LotteryCommand extends UserCommand
         return [$text, $lottery_id, $bets];
     }
 
+    /**
+     * 大乐透号码
+     *
+     * @return array
+     */
     private function dlt()
     {
         $red_no = $this->lucky(1, 35, 5);
@@ -173,6 +191,11 @@ class LotteryCommand extends UserCommand
         return [$red_no, $blue_no];
     }
 
+    /**
+     * 双色球号码
+     *
+     * @return array
+     */
     private function ssq()
     {
         $red_no = $this->lucky(1, 33, 6);
@@ -180,7 +203,15 @@ class LotteryCommand extends UserCommand
         return [$red_no, $blue_no];
     }
 
-    private function lucky($begin, $end, $limit)
+    /**
+     * 随机号生成
+     *
+     * @param $begin
+     * @param $end
+     * @param $limit
+     * @return string
+     */
+    private function lucky($begin, $end, $limit): string
     {
         $result = '';
         $rand_array = range($begin, $end);
@@ -194,7 +225,8 @@ class LotteryCommand extends UserCommand
     }
 
     /**
-     * 保存bet内容
+     * 保存投注内容
+     *
      * @param $lottery_id
      * @param $lottery_no
      * @param $lottery_bets
@@ -235,9 +267,11 @@ class LotteryCommand extends UserCommand
 
     /**
      * 获取当前期号
+     *
      * @param $lottery_id
      * @param string $lottery_no
      * @return false|int
+     * @throws Exception
      */
     private function getLotteryNo($lottery_id, $lottery_no = '')
     {
@@ -265,9 +299,11 @@ class LotteryCommand extends UserCommand
 
     /**
      * 请求聚合api
+     *
      * @param $uri
      * @param array $params
      * @return false|mixed
+     * @throws Exception
      */
     private function requestApi($uri, $params = [])
     {
@@ -291,6 +327,11 @@ class LotteryCommand extends UserCommand
         }
     }
 
+    /**
+     * 获取彩票类别
+     *
+     * @return string
+     */
     private function getLotteryId()
     {
         $ssq_w = array(0, 2, 4);
@@ -306,7 +347,16 @@ class LotteryCommand extends UserCommand
         }
     }
 
-    private function checkBonus($lottery_id, $lottery_date = '', $lottery_no = '')
+    /**
+     * 获取投注内容，查询中奖接口，返回中奖情况
+     *
+     * @param $lottery_id
+     * @param string $lottery_date
+     * @param string $lottery_no
+     * @return string
+     * @throws Exception
+     */
+    private function checkBonus($lottery_id, $lottery_date = '', $lottery_no = ''): string
     {
         $bets = $this->findBets($lottery_id, $lottery_date, $lottery_no);
 
@@ -335,6 +385,14 @@ class LotteryCommand extends UserCommand
         return $text;
     }
 
+    /**
+     * 查找投注内容，默认根据类别，查找最新一期
+     *
+     * @param $lottery_id
+     * @param string $lottery_date
+     * @param string $lottery_no
+     * @return array|false
+     */
     private function findBets($lottery_id, $lottery_date = '', $lottery_no = '')
     {
         if (empty($lottery_id)) {
@@ -374,6 +432,15 @@ class LotteryCommand extends UserCommand
         return $bets;
     }
 
+    /**
+     * 正则替换第n次匹配的内容
+     *
+     * @param $search
+     * @param $replace
+     * @param $subject
+     * @param $nth
+     * @return string|string[]
+     */
     private function strReplaceNth($search, $replace, $subject, $nth)
     {
         $found = preg_match_all('/' . preg_quote($search) . '/', $subject, $matches, PREG_OFFSET_CAPTURE);
