@@ -43,38 +43,6 @@ $db_config = [
 // Initialize
 $db = new Medoo($db_config);
 
-function findBets($db, $lottery_id, $lottery_date = '', $lottery_no = '')
-{
-    if (empty($lottery_id)) {
-        return false;
-    }
-    $params['lottery_id'] = $lottery_id;
-    if (!empty($lottery_date)) {
-        $params['lottery_date'] = $lottery_date;
-    }
-    if (!empty($lottery_no)) {
-        $params['lottery_no'] = $lottery_no;
-    }
-
-    $params['ORDER'] = ["id" => "DESC"];
-    $params['LIMIT'] = 3;
-
-    $table = 'lottery_bets';
-
-    $rst = $db->select($table, '*', $params);
-
-    if (empty($rst)) {
-        return false;
-    }
-    $bets = [];
-
-    foreach ($rst as $item) {
-        $nth = $lottery_id === 'ssq' ? 5 : 4;
-        $bets[] = str_replace_nth(',', '@', $item['lottery_bets'], $nth);
-    }
-
-    return $bets;
-}
 
 $lottery_id = 'dlt';
 $lottery_date = '2020-09-23';
@@ -109,10 +77,43 @@ for ($i = 0; $i < count($bets); $i++) {
 $telegram = new Longman\TelegramBot\Telegram($config['api_key'], $config['bot_username']);
 
 $m_chat_id = 43709453;
+$text = '这是一个测试消息';
 
 sendMsg($m_chat_id, $text);
+echo "233333333333333333333333333";
 
-die();
+function findBets($db, $lottery_id, $lottery_date = '', $lottery_no = '')
+{
+    if (empty($lottery_id)) {
+        return false;
+    }
+    $params['lottery_id'] = $lottery_id;
+    if (!empty($lottery_date)) {
+        $params['lottery_date'] = $lottery_date;
+    }
+    if (!empty($lottery_no)) {
+        $params['lottery_no'] = $lottery_no;
+    }
+
+    $params['ORDER'] = ["id" => "DESC"];
+    $params['LIMIT'] = 3;
+
+    $table = 'lottery_bets';
+
+    $rst = $db->select($table, '*', $params);
+
+    if (empty($rst)) {
+        return false;
+    }
+    $bets = [];
+
+    foreach ($rst as $item) {
+        $nth = $lottery_id === 'ssq' ? 5 : 4;
+        $bets[] = str_replace_nth(',', '@', $item['lottery_bets'], $nth);
+    }
+
+    return $bets;
+}
 
 function addLog($event, $content)
 {

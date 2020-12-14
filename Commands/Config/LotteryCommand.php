@@ -309,6 +309,8 @@ class LotteryCommand extends UserCommand
     private function checkBonus($lottery_id, $lottery_date = '', $lottery_no = '')
     {
         $bets = $this->findBets($lottery_id, $lottery_date, $lottery_no);
+        $intRed = 'ssq' === $lottery_id ? 6 : 5;
+        $intBlue = 'ssq' === $lottery_id ? 1 : 2;
 
         $text = '';
         for ($i = 0; $i < count($bets); $i++) {
@@ -323,8 +325,8 @@ class LotteryCommand extends UserCommand
             }
 
             $text .= "第" . ($i + 1) . "个投注：" . $rst['lottery_res'] . PHP_EOL;
-            $text .= '红球命中：' . $rst['hit_red_ball_num'] . '个（5）' . PHP_EOL;
-            $text .= '蓝球命中：' . $rst['hit_blue_ball_num'] . '个（2）' . PHP_EOL;
+            $text .= '红球命中：' . $rst['hit_red_ball_num'] . "个（{$intRed}）" . PHP_EOL;
+            $text .= '蓝球命中：' . $rst['hit_blue_ball_num'] . "个（{$intBlue}）" . PHP_EOL;
             if (1 === (int)$rst['is_prize']) {
                 $content = "{$rst['prize_msg']}，{$rst['lottery_prize'][0]['prize_name']}，奖金：{$rst['lottery_prize'][0]['prize_money']}元";
             } else {
